@@ -1,69 +1,58 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const JobOrdersContext = createContext();
 
 export function JobOrdersProvider({ children }) {
   const [clients, setClients] = useState([
-    "Tech Corp",
-    "Finance Inc",
-    "Global Solutions",
-    "Innovate LLC"
+    'Tech Corp',
+    'Innovate Inc',
+    'Digital Solutions',
+    'Global Systems',
   ]);
 
   const [jobOrders, setJobOrders] = useState([
     {
       id: 1,
-      clientName: "Tech Corp",
-      jobTitle: "Senior Developer",
-      location: "New York, NY",
+      clientName: 'Tech Corp',
+      jobTitle: 'Senior Developer',
+      location: 'New York, NY',
       salary: 150000,
-      receivedDate: "2024-01-15",
-      dueDate: "2024-02-15",
-      status: "Open",
-      priority: "High",
-      commission: 12000
+      receivedDate: '2024-01-15',
+      dueDate: '2024-02-15',
+      status: 'Open',
+      priority: 'High',
+      commission: 12000,
+      assignedRecruiters: [],
+      dateAssigned: null
     },
     {
       id: 2,
-      clientName: "Finance Inc",
-      jobTitle: "Project Manager",
-      location: "Chicago, IL",
+      clientName: 'Finance Inc',
+      jobTitle: 'Project Manager',
+      location: 'Chicago, IL',
       salary: 120000,
-      receivedDate: "2024-01-10",
-      dueDate: "2024-03-01",
-      status: "Hold",
-      priority: "Medium",
-      commission: 9600
+      receivedDate: '2024-01-10',
+      dueDate: '2024-03-01',
+      status: 'Hold',
+      priority: 'Medium',
+      commission: 9600,
+      assignedRecruiters: [],
+      dateAssigned: null
     }
   ]);
 
-  const addClient = (clientName) => {
-    if (!clients.includes(clientName)) {
-      setClients(prev => [...prev, clientName]);
-    }
-  };
-
-  const addJobOrder = (jobOrder) => {
-    if (jobOrder.newClientName) {
-      addClient(jobOrder.newClientName);
-    }
-    const newJobOrder = {
-      ...jobOrder,
+  const addJobOrder = (newJobOrder) => {
+    setJobOrders(prev => [...prev, { 
+      ...newJobOrder, 
       id: Date.now(),
-      commission: Number(jobOrder.salary) * 0.08
-    };
-    setJobOrders(prev => [...prev, newJobOrder]);
+      assignedRecruiters: newJobOrder.assignedRecruiters || [],
+      dateAssigned: newJobOrder.dateAssigned || null
+    }]);
   };
 
-  const updateJobOrder = (updatedJobOrder) => {
-    if (updatedJobOrder.newClientName) {
-      addClient(updatedJobOrder.newClientName);
-    }
+  const updateJobOrder = (updatedJob) => {
     setJobOrders(prev => 
-      prev.map(job => job.id === updatedJobOrder.id ? {
-        ...updatedJobOrder,
-        commission: Number(updatedJobOrder.salary) * 0.08
-      } : job)
+      prev.map(job => job.id === updatedJob.id ? updatedJob : job)
     );
   };
 
@@ -71,13 +60,19 @@ export function JobOrdersProvider({ children }) {
     setJobOrders(prev => prev.filter(job => job.id !== jobId));
   };
 
+  const addClient = (newClient) => {
+    if (!clients.includes(newClient)) {
+      setClients(prev => [...prev, newClient]);
+    }
+  };
+
   return (
     <JobOrdersContext.Provider value={{
       jobOrders,
-      clients,
       addJobOrder,
       updateJobOrder,
       deleteJobOrder,
+      clients,
       addClient
     }}>
       {children}

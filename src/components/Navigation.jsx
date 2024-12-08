@@ -11,7 +11,8 @@ import {
   DollarSign,
   ChevronDown,
   UserCircle,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -19,38 +20,46 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-
-const navigationItems = [
-  {
-    path: '/',
-    label: 'Dashboard',
-    icon: LayoutDashboard
-  },
-  {
-    path: '/planning',
-    label: 'Weekly Planning',
-    icon: Calendar
-  },
-  {
-    path: '/job-orders',
-    label: 'Job Orders',
-    icon: Briefcase
-  },
-  {
-    path: '/activity',
-    label: 'Weekly Activity',
-    icon: BarChart3
-  },
-  {
-    path: '/commission',
-    label: 'Commission',
-    icon: DollarSign
-  }
-];
+import { Button } from './ui/button';
 
 const Navigation = () => {
   const location = useLocation();
-  const { userRole } = useContext(UserRoleContext);
+  const { userRole, setUserRole } = useContext(UserRoleContext);
+
+  const navigationItems = [
+    {
+      path: '/',
+      label: 'Dashboard',
+      icon: LayoutDashboard
+    },
+    {
+      path: '/planning',
+      label: 'Weekly Planning',
+      icon: Calendar
+    },
+    {
+      path: '/activity',
+      label: 'Weekly Activity',
+      icon: BarChart3
+    },
+    {
+      path: '/job-orders',
+      label: 'Job Orders',
+      icon: Briefcase
+    },
+    {
+      path: '/commission',
+      label: 'Commission',
+      icon: DollarSign
+    },
+    ...(userRole === 'admin' ? [
+      {
+        path: '/admin',
+        label: 'Admin',
+        icon: Settings
+      }
+    ] : [])
+  ];
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-gray-200 bg-white">
@@ -95,10 +104,28 @@ const Navigation = () => {
 
           {/* User Section */}
           <div className="w-[200px] flex items-center justify-end space-x-4">
-            {/* Role Badge */}
-            <span className="text-sm font-medium text-black">
-              Role: {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-            </span>
+            {/* Role Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">
+                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setUserRole('recruiter')}>
+                  Recruiter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setUserRole('manager')}>
+                  Manager
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setUserRole('admin')}>
+                  Admin
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* User Menu */}
             <DropdownMenu>

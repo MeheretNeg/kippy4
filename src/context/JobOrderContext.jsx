@@ -20,11 +20,44 @@ export const JobOrderProvider = ({ children }) => {
   };
 
   const updateJobOrder = (updatedJobOrder) => {
-    setJobOrders(prev => 
-      prev.map(order => 
-        order.id === updatedJobOrder.id ? updatedJobOrder : order
-      )
-    );
+    // Check if this is a new placement
+    const oldJob = jobOrders.find(job => job.id === updatedJobOrder.id);
+    const isNewPlacement = oldJob?.status !== 'Placed' && updatedJobOrder.status === 'Placed';
+
+    if (isNewPlacement) {
+      // Update the job with placement date and status
+      const jobWithPlacement = {
+        ...updatedJobOrder,
+        placementDate: new Date().toISOString(),
+        status: 'Placed'
+      };
+
+      setJobOrders(prev => 
+        prev.map(order => 
+          order.id === updatedJobOrder.id ? jobWithPlacement : order
+        )
+      );
+
+      // Trigger placement-related updates in other contexts
+      if (window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('jobPlacement', { 
+          detail: {
+            jobId: updatedJobOrder.id,
+            placementDate: new Date().toISOString(),
+            jobTitle: updatedJobOrder.jobTitle,
+            clientName: updatedJobOrder.clientName,
+            commission: updatedJobOrder.potentialCommission
+          }
+        }));
+      }
+    } else {
+      // Regular job update
+      setJobOrders(prev => 
+        prev.map(order => 
+          order.id === updatedJobOrder.id ? updatedJobOrder : order
+        )
+      );
+    }
   };
 
   const deleteJobOrder = (jobOrderId) => {

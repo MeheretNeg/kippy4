@@ -3,40 +3,118 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const RecruiterContext = createContext();
 
 export const useRecruiterData = () => {
-  return useContext(RecruiterContext);
+  const context = useContext(RecruiterContext);
+  if (!context) {
+    throw new Error('useRecruiterData must be used within a RecruiterProvider');
+  }
+  return context;
 };
 
 export const RecruiterProvider = ({ children }) => {
-  const [recruiterData, setRecruiterData] = useState({
-    recruiterName: 'John Doe',
-    placementsThisMonth: 5,
-    commissionEarned: 15000,
-    cvsSourced: 50,
-    activeJobs: 2,
-    weeklyMetrics: {
-      inHouseInterviews: { current: 10, target: 20 },
-      clientInterviews: { current: 8, target: 15 },
-      placements: { current: 3, target: 5 }
-    },
-    trends: {
-      screenings: { percentage: 25, isUp: true },
-      placements: { percentage: 10, isUp: false }
-    }
-  });
+  const [recruiters, setRecruiters] = useState([]);
 
-  const fetchRecruiterData = () => {
-    // Simulated data fetch
-    console.log('Fetching recruiter data');
-  };
-
+  // Load initial data
   useEffect(() => {
-    fetchRecruiterData();
-    const interval = setInterval(fetchRecruiterData, 5 * 60 * 1000); // Refresh every 5 minutes
-    return () => clearInterval(interval);
+    const loadInitialData = () => {
+      const initialRecruiters = [
+        {
+          id: 1,
+          name: "John Doe",
+          email: "john.doe@example.com",
+          phone: "+1234567890",
+          activeJobs: [],
+          cvsSourced: 15,
+          weeklyMetrics: {
+            clientInterviews: {
+              current: 3,
+              previous: 2
+            },
+            candidatesSubmitted: {
+              current: 8,
+              previous: 5
+            }
+          }
+        },
+        {
+          id: 2,
+          name: "Jane Smith",
+          email: "jane.smith@example.com",
+          phone: "+0987654321",
+          activeJobs: [],
+          cvsSourced: 12,
+          weeklyMetrics: {
+            clientInterviews: {
+              current: 4,
+              previous: 3
+            },
+            candidatesSubmitted: {
+              current: 10,
+              previous: 7
+            }
+          }
+        }
+      ];
+      setRecruiters(initialRecruiters);
+    };
+
+    loadInitialData();
   }, []);
 
+  const addRecruiter = (recruiter) => {
+    setRecruiters(prev => [...prev, { ...recruiter, id: Date.now(), activeJobs: [] }]);
+  };
+
+  const updateRecruiter = (updatedRecruiter) => {
+    setRecruiters(prev =>
+      prev.map(recruiter =>
+        recruiter.id === updatedRecruiter.id ? { ...recruiter, ...updatedRecruiter } : recruiter
+      )
+    );
+  };
+
+  const deleteRecruiter = (recruiterId) => {
+    setRecruiters(prev => prev.filter(recruiter => recruiter.id !== recruiterId));
+  };
+
+  const assignJobToRecruiters = (jobId, recruiterIds) => {
+    setRecruiters(prev => 
+      prev.map(recruiter => {
+        if (recruiterIds.includes(recruiter.id)) {
+          return {
+            ...recruiter,
+            activeJobs: [...new Set([...recruiter.activeJobs, jobId])]
+          };
+        }
+        return recruiter;
+      })
+    );
+  };
+
+  const removeJobFromRecruiters = (jobId, recruiterIds) => {
+    setRecruiters(prev =>
+      prev.map(recruiter => {
+        if (recruiterIds.includes(recruiter.id)) {
+          return {
+            ...recruiter,
+            activeJobs: recruiter.activeJobs.filter(id => id !== jobId)
+          };
+        }
+        return recruiter;
+      })
+    );
+  };
+
+  const value = {
+    recruiters,
+    addRecruiter,
+    updateRecruiter,
+    deleteRecruiter,
+    assignJobToRecruiters,
+    removeJobFromRecruiters
+  };
+
   return (
-    <RecruiterContext.Provider value={{ recruiterData, setRecruiterData }}>
+    <RecruiterContext.Provider value={value}>
       {children}
     </RecruiterContext.Provider>
   );

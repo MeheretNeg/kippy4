@@ -6,33 +6,56 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
-import { ChevronDown } from 'lucide-react';
+import { 
+  ChevronDown, 
+  ChevronRight,
+  Target, 
+  Users, 
+  Clock, 
+  Award,
+  Briefcase,
+  DollarSign,
+  TrendingUp,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
+  ArrowUpRight,
+  Plus
+} from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useRecruiterData } from '../../contexts/RecruiterContext';
 import PerformanceDial from './PerformanceDial';
 import { useNavigate } from 'react-router-dom';
+import KPICard from './KPICard';
+import PerformanceDashboard from './PerformanceDashboard';
 
 const MetricCard = ({ title, value, subtitle, trend }) => (
   <Card className="bg-white shadow-sm border border-gray-200">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
-      {trend && (
-        <Badge
-          className={cn(
-            trend > 0 ? 'bg-black text-white' : 'bg-white text-black border border-gray-200'
+    <CardContent className="p-6">
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+          {trend && (
+            <span className={cn(
+              "px-2.5 py-0.5 rounded-full text-xs font-medium",
+              trend >= 0 
+                ? "bg-green-50 text-green-700" 
+                : "bg-red-50 text-red-700"
+            )}>
+              {trend > 0 ? '+' : ''}{trend}%
+            </span>
           )}
-        >
-          {trend > 0 ? '+' : ''}{trend}%
-        </Badge>
-      )}
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
-      {subtitle && (
-        <p className="text-xs text-gray-500 mt-1">
-          {subtitle}
-        </p>
-      )}
+        </div>
+        
+        {/* Value */}
+        <div className="flex items-baseline space-x-1">
+          <span className="text-2xl font-bold text-gray-900">{value}</span>
+          {subtitle && (
+            <span className="text-sm text-gray-500">{subtitle}</span>
+          )}
+        </div>
+      </div>
     </CardContent>
   </Card>
 );
@@ -141,46 +164,45 @@ const RecruiterDashboard = () => {
   const { jobOrders } = useJobOrders();
   const metrics = performanceMetrics.recruiter;
   const activeJobs = jobOrders.filter(job => job.status === 'Open');
-
+  const { recruiterData } = useRecruiterData();
+  
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Candidates Placed"
-          value={metrics.candidatesPlaced}
-          trend={5}
-        />
-        <MetricCard
-          title="Active Jobs"
-          value={metrics.activeJobs}
-          trend={3}
-        />
-        <MetricCard
-          title="Monthly Target"
-          value={`${metrics.monthlyTarget.achieved}/${metrics.monthlyTarget.target}`}
-          subtitle="Placements this month"
-        />
-        <MetricCard
-          title="Commission Earned"
-          value={`Birr ${commissionData.individual.currentMonth.toLocaleString()}`}
+      {/* KPI Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <KPICard
+          title="Monthly Placements"
+          current={recruiterData.placementsThisMonth}
+          target={10}
+          previousPeriod={8}
+          icon={Target}
           trend={15}
         />
+        <KPICard
+          title="Weekly Submissions"
+          current={recruiterData.cvsSourced}
+          target={30}
+          previousPeriod={45}
+          icon={Users}
+          trend={-10}
+        />
+        <KPICard
+          title="In-House Interviews"
+          current={recruiterData.weeklyMetrics.inHouseInterviews.current}
+          target={recruiterData.weeklyMetrics.inHouseInterviews.target}
+          previousPeriod={15}
+          icon={Briefcase}
+          trend={20}
+        />
+        <KPICard
+          title="Client Interviews"
+          current={recruiterData.weeklyMetrics.clientInterviews.current}
+          target={recruiterData.weeklyMetrics.clientInterviews.target}
+          previousPeriod={12}
+          icon={Clock}
+          trend={5}
+        />
       </div>
-
-      <Card className="bg-white shadow-sm border border-gray-200">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-xl text-gray-900">My Active Jobs</CardTitle>
-            <Button variant="outline" size="sm">
-              View All
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <JobList jobs={activeJobs.slice(0, 2)} />
-        </CardContent>
-      </Card>
     </div>
   );
 };
@@ -267,191 +289,319 @@ const Dashboard = () => {
   const { recruiterData } = useRecruiterData();
   const { jobOrders } = useJobOrders();
   const navigate = useNavigate();
+  const [selectedTimeframe, setSelectedTimeframe] = useState('weekly');
   const [motivationTip] = useState(
     motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
   );
 
+  // Add loading check
+  if (!recruiterData) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900">Loading Dashboard...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  const activeJobs = jobOrders?.filter(job => job.status === 'Open') || [];
+  const urgentJobs = activeJobs.filter(job => job.priority === 'High');
+  const upcomingInterviews = recruiterData.upcomingInterviews || [];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
-        <div className="p-6">
-          <div className="flex flex-col space-y-6 font-inter">
-            {/* Welcome Message */}
-            <Card className="bg-yellow-50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold text-gray-800">
-                  Welcome, {recruiterData.recruiterName}! Let's make today impactful.
-                </CardTitle>
-              </CardHeader>
-            </Card>
+        <div className="space-y-8">
+          {/* Header Section */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Welcome back, {recruiterData.recruiterName}</h1>
+              <p className="text-gray-600 mt-1">Here's your recruitment dashboard for today</p>
+            </div>
+            <Button onClick={() => navigate('/job-orders')} className="bg-black text-white hover:bg-yellow-500 hover:text-black transition-colors">
+              <Plus className="mr-2 h-4 w-4" />
+              New Job Order
+            </Button>
+          </div>
 
-            {/* Performance Dial */}
-            <PerformanceDial
-              current={recruiterData.weeklyMetrics.placements.current}
-              goal={recruiterData.weeklyMetrics.placements.target}
-              title="Weekly Placements"
-              description="Track your progress towards this week's placement goal"
-            />
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-3 gap-6">
-              <Card 
-                className="shadow-lg hover:shadow-xl transition-shadow cursor-pointer bg-white hover:bg-gray-50"
-                onClick={() => navigate('/planning')}
-              >
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Active Jobs</h3>
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">{jobOrders.filter(job => job.status === 'Open').length}</p>
-                      <p className="ml-2 text-sm text-gray-600">Open Positions</p>
+          {/* Main Grid Layout */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left Column - Main Content */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
+              {/* Performance Overview */}
+              <Card className="bg-white">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-semibold">Performance Overview</CardTitle>
+                  <select 
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-600"
+                    value={selectedTimeframe}
+                    onChange={(e) => setSelectedTimeframe(e.target.value)}
+                  >
+                    <option value="weekly">This Week</option>
+                    <option value="monthly">This Month</option>
+                    <option value="quarterly">This Quarter</option>
+                  </select>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Target className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-600">Placements</span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold">{recruiterData.placementsThisMonth}</span>
+                        <span className="text-sm text-green-600">+{recruiterData.trends.placements.percentage}%</span>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500">Click to view planning</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-600">Submissions</span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold">{recruiterData.cvsSourced}</span>
+                        <span className="text-sm text-green-600">+{recruiterData.trends.screenings.percentage}%</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-600">Commission</span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold">Birr {recruiterData.commissionEarned.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bars */}
+                  <div className="mt-6 space-y-4">
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-600">Overall Progress</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {recruiterData.weeklyMetrics.placements.current}/{recruiterData.weeklyMetrics.placements.target}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-black rounded-full transition-all duration-500"
+                          style={{ width: `${(recruiterData.weeklyMetrics.placements.current / recruiterData.weeklyMetrics.placements.target) * 100}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Commission Earned</h3>
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">{recruiterData.commissionEarned.toLocaleString()}</p>
-                      <p className="ml-2 text-sm text-gray-600">Birr This Month</p>
+              {/* Commission Overview Section */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card className="bg-white shadow-sm border border-gray-200">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-sm font-medium text-gray-600">Monthly Commission</h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                          +12%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold text-gray-900">$4,250</span>
+                        <span className="text-sm text-gray-500">this month</span>
+                      </div>
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500">Progress</span>
+                          <span className="font-medium text-gray-900">75%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-black rounded-full" style={{ width: '75%' }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white shadow-sm border border-gray-200">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-sm font-medium text-gray-600">Quarterly Bonus</h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
+                          On Track
+                        </span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold text-gray-900">$12,800</span>
+                        <span className="text-sm text-gray-500">projected</span>
+                      </div>
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500">Target Progress</span>
+                          <span className="font-medium text-gray-900">60%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-yellow-500 rounded-full" style={{ width: '60%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white shadow-sm border border-gray-200">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-sm font-medium text-gray-600">Annual Target</h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700">
+                          $85,000
+                        </span>
+                      </div>
+                      <div className="flex items-baseline space-x-2">
+                        <span className="text-2xl font-bold text-gray-900">$45,600</span>
+                        <span className="text-sm text-gray-500">earned YTD</span>
+                      </div>
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500">Year Progress</span>
+                          <span className="font-medium text-gray-900">54%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-black rounded-full" style={{ width: '54%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Performance Dashboard Section */}
+              <Card className="col-span-2">
+                <CardHeader>
+                  <CardTitle>Weekly Performance</CardTitle>
+                  <CardDescription>Track your KPIs against industry standard targets</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PerformanceDashboard
+                    weeklyMetrics={{
+                      cvsSourced: recruiterData.weeklyMetrics.cvsSourced || 0,
+                      screeningsConducted: recruiterData.weeklyMetrics.screeningsConducted || 0,
+                      submissionsToClients: recruiterData.weeklyMetrics.submissionsToClients || 0,
+                      inHouseInterviews: recruiterData.weeklyMetrics.inHouseInterviews.current || 0,
+                      clientInterviews: recruiterData.weeklyMetrics.clientInterviews.current || 0,
+                      placementsMade: recruiterData.weeklyMetrics.placementsMade || 0,
+                      timeToFill: recruiterData.weeklyMetrics.timeToFill || 0,
+                    }}
+                    selectedWeek={selectedTimeframe}
+                  />
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Submissions</h3>
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">{recruiterData.cvsSourced}</p>
-                      <p className="ml-2 text-sm text-gray-600">This Week</p>
-                    </div>
+              {/* Active Jobs Overview */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-xl font-semibold">Active Jobs ({activeJobs.length})</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/job-orders')}>
+                    View All
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {activeJobs.slice(0, 3).map((job) => (
+                      <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="space-y-1">
+                          <h3 className="font-medium text-gray-900">{job.jobTitle}</h3>
+                          <p className="text-sm text-gray-600">{job.clientName}</p>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-900">Birr {job.salary.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">{job.location}</p>
+                          </div>
+                          <Badge className={cn(
+                            job.priority === 'High'
+                              ? 'bg-black text-white'
+                              : 'bg-gray-100 text-gray-800'
+                          )}>
+                            {job.priority}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Recruitment Trends Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">Recruitment Trends</h2>
-                <select className="px-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-600">
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-
-              {/* KPI Progress Bars */}
-              <div className="grid gap-4">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-600">In House Interviews</span>
-                    <span className="text-sm font-semibold text-gray-800">
-                      {recruiterData.weeklyMetrics.inHouseInterviews.current}/{recruiterData.weeklyMetrics.inHouseInterviews.target}
-                    </span>
-                  </div>
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="absolute h-full bg-gray-700 rounded-full transition-all duration-500"
-                      style={{ width: `${(recruiterData.weeklyMetrics.inHouseInterviews.current / recruiterData.weeklyMetrics.inHouseInterviews.target) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-600">Client Interviews</span>
-                    <span className="text-sm font-semibold text-gray-800">
-                      {recruiterData.weeklyMetrics.clientInterviews.current}/{recruiterData.weeklyMetrics.clientInterviews.target}
-                    </span>
-                  </div>
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="absolute h-full bg-gray-600 rounded-full transition-all duration-500"
-                      style={{ width: `${(recruiterData.weeklyMetrics.clientInterviews.current / recruiterData.weeklyMetrics.clientInterviews.target) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-600">Placements Achieved</span>
-                    <span className="text-sm font-semibold text-gray-800">
-                      {recruiterData.weeklyMetrics.placements.current}/{recruiterData.weeklyMetrics.placements.target}
-                    </span>
-                  </div>
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="absolute h-full bg-gray-500 rounded-full transition-all duration-500"
-                      style={{ width: `${(recruiterData.weeklyMetrics.placements.current / recruiterData.weeklyMetrics.placements.target) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Insights */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100">
-                <h3 className="px-4 py-3 text-sm font-medium text-gray-600">Insights</h3>
-                <div className="p-4 space-y-3">
-                  {recruiterData.trends.screenings.percentage !== 0 && (
-                    <div className="flex items-start space-x-3">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full ${recruiterData.trends.screenings.isUp ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center`}>
-                        <svg className={`w-5 h-5 ${recruiterData.trends.screenings.isUp ? 'text-green-600' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={recruiterData.trends.screenings.isUp ? "M5 10l7-7m0 0l7 7m-7-7v18" : "M19 14l-7 7m0 0l-7-7m7 7V3"} />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-800 font-medium">
-                          Your screenings are {recruiterData.trends.screenings.isUp ? 'up' : 'down'} {Math.abs(recruiterData.trends.screenings.percentage)}% this week!
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {recruiterData.trends.screenings.isUp ? 'Keep up the great work' : 'Focus on increasing your screening activities'}
-                        </p>
-                      </div>
+            {/* Right Column - Secondary Content */}
+            <div className="col-span-12 lg:col-span-4 space-y-6">
+              {/* Quick Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      <span className="text-sm font-medium">Urgent Jobs</span>
                     </div>
-                  )}
-                  {recruiterData.trends.placements.percentage !== 0 && (
-                    <div className="flex items-start space-x-3">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full ${recruiterData.trends.placements.isUp ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center`}>
-                        <svg className={`w-5 h-5 ${recruiterData.trends.placements.isUp ? 'text-green-600' : 'text-yellow-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={recruiterData.trends.placements.isUp ? "M5 10l7-7m0 0l7 7m-7-7v18" : "M19 14l-7 7m0 0l-7-7m7 7V3"} />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-800 font-medium">
-                          Placements have {recruiterData.trends.placements.isUp ? 'increased' : 'decreased'} by {Math.abs(recruiterData.trends.placements.percentage)}% 
-                          {recruiterData.trends.placements.isUp ? ' this week!' : ' over the last 2 weeks'}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {recruiterData.trends.placements.isUp 
-                            ? 'Excellent progress on converting interviews to placements'
-                            : 'Focus on converting more interviews to placements'}
-                        </p>
-                      </div>
+                    <span className="text-2xl font-bold">{urgentJobs.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="h-5 w-5 text-blue-500" />
+                      <span className="text-sm font-medium">Upcoming Interviews</span>
                     </div>
-                  )}
-                </div>
-              </div>
+                    <span className="text-2xl font-bold">{upcomingInterviews.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="text-sm font-medium">Success Rate</span>
+                    </div>
+                    <span className="text-2xl font-bold">{recruiterData.successRate}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Upcoming Interviews */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">Upcoming Interviews</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {upcomingInterviews.slice(0, 3).map((interview, index) => (
+                      <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{interview.candidateName}</p>
+                          <p className="text-sm text-gray-600">{interview.jobTitle}</p>
+                          <p className="text-xs text-gray-500 mt-1">{interview.datetime}</p>
+                        </div>
+                        <Badge className={interview.type === 'Client' ? 'bg-black text-white' : 'bg-gray-200 text-gray-800'}>
+                          {interview.type}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Daily Motivation */}
+              <Card className="bg-yellow-50">
+                <CardContent className="p-6">
+                  <div className="text-center">
+                    <p className="text-lg font-medium text-gray-900 leading-relaxed">{motivationTip}</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-
-            {/* Daily Motivation Tip */}
-            <Card className="bg-yellow-50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="py-8">
-                <div className="text-center">
-                  <p className="text-3xl font-quotes text-gray-800 leading-relaxed px-8 tracking-wide">{motivationTip}</p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
-        {userRole === 'manager' && <ManagerDashboard />}
-        {userRole === 'recruiter' && <RecruiterDashboard />}
-        {userRole === 'admin' && <AdminDashboard />}
       </div>
     </div>
   );
